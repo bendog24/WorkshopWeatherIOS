@@ -1,0 +1,1 @@
+////  DataModels.h////  Created by Ben Jakuben on 6/13/14//  Copyright (c) 2014 Treehouse. All rights reserved.//#import "Alerts.h"#import "Hourly.h"#import "DailyData.h"#import "Daily.h"#import "Currently.h"#import "Minutely.h"#import "Flags.h"#import "Forecast.h"
