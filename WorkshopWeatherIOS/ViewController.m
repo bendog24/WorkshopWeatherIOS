@@ -10,6 +10,7 @@
 #import <RestKit/RestKit.h>
 #import "DataModels.h"
 #import "DailyForecastTableViewCell.h"
+#import <Crashlytics/Crashlytics.h>
 
 #define kBASEURL @"https://api.forecast.io"
 #define kFORECASTKEY @"49aabc829e12b795569e85bde5933ac3"
@@ -25,6 +26,11 @@
     [super viewDidLoad];
     
     [self getForecastDataWithLat:36.099869 andLong:-115.171347];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    self.screenName = @"Forecast View Controller";
 }
 
 
@@ -47,10 +53,47 @@
     DailyData *dayData = [self.tableData objectAtIndex:indexPath.row];
     
     cell.dayLabel.text = [self getDayName:(int)indexPath.row];
-    
-    // TODO: Something is wrong with dayData
     cell.summaryLabel.text = dayData.summary;
     cell.highLowLabel.text = [NSString stringWithFormat:@"%.0f / %.0f", dayData.temperatureMax, dayData.temperatureMin];
+    
+    // Day label
+    CGRect startDayLabel = cell.dayLabel.frame;
+    CGRect endDayLabel = CGRectMake(startDayLabel.origin.x - 320, startDayLabel.origin.y, startDayLabel.size.width, startDayLabel.size.height);
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView beginAnimations:nil context:nil];
+        [UIView setAnimationDuration:0.5];
+        [UIView setAnimationDelay:0.1 * indexPath.row];
+        [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+        cell.dayLabel.frame = endDayLabel;
+        [UIView commitAnimations];
+    });
+    
+    // Summary label
+    CGRect startSummaryLabel = cell.summaryLabel.frame;
+    CGRect endSummaryLabel = CGRectMake(startSummaryLabel.origin.x - 320, startSummaryLabel.origin.y, startSummaryLabel.size.width, startSummaryLabel.size.height);
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView beginAnimations:nil context:nil];
+        [UIView setAnimationDuration:0.5];
+        [UIView setAnimationDelay:0.1 * indexPath.row];
+        [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+        cell.summaryLabel.frame = endSummaryLabel;
+        [UIView commitAnimations];
+    });
+
+    // Temperature labels
+    CGRect startHighLowLabel = cell.highLowLabel.frame;
+    CGRect endHighLowLabel = CGRectMake(startHighLowLabel.origin.x - 320, startHighLowLabel.origin.y, startHighLowLabel.size.width, startHighLowLabel.size.height);
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView beginAnimations:nil context:nil];
+        [UIView setAnimationDuration:0.5];
+        [UIView setAnimationDelay:0.1 * indexPath.row];
+        [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+        cell.highLowLabel.frame = endHighLowLabel;
+        [UIView commitAnimations];
+    });
     
     return cell;
 }
@@ -79,6 +122,8 @@
             Forecast *forecast = [result firstObject];
             NSLog(@"Mapped the forecast: %@", forecast);
             [self displayForecast:forecast];
+            
+//            [[Crashlytics sharedInstance] crash];
         }
         failure:^(RKObjectRequestOperation *operation, NSError *error) {
             NSLog(@"Failed with error: %@", [error localizedDescription]);
@@ -152,8 +197,55 @@
 
 - (void)displayForecast:(Forecast *)forecast {
     self.currentTemperatureLabel.text = [NSString stringWithFormat:@"%.0f\u00B0", forecast.currently.temperature];
+    self.currentWeatherImage.image = [self getCurrentWeatherImage:forecast.currently.icon];
     self.tableData = forecast.daily.data;
     [self.tableView reloadData];
+    
+    [self animateCurrentConditions];
+}
+
+- (UIImage *)getCurrentWeatherImage:(NSString *)currentIcon {
+    if ([currentIcon isEqualToString:@"clear-day"]) {
+        return [UIImage imageNamed:@"sun"];
+    }
+    else if([currentIcon isEqualToString:@"clear-night"]) {
+        return [UIImage imageNamed:@"moon"];
+    }
+    else if([currentIcon isEqualToString:@"rain"]) {
+        return [UIImage imageNamed:@"moon"];
+    }
+    else if([currentIcon isEqualToString:@"snow"]) {
+        return [UIImage imageNamed:@"snow"];
+    }
+    else if([currentIcon isEqualToString:@"sleet"]) {
+        return [UIImage imageNamed:@"snow"];
+    }
+    else if([currentIcon isEqualToString:@"wind"]) {
+        return [UIImage imageNamed:@"tornado"];
+    }
+    else if([currentIcon isEqualToString:@"fog"]) {
+        return [UIImage imageNamed:@"haze"];
+    }
+    else if([currentIcon isEqualToString:@"cloudy"]) {
+        return [UIImage imageNamed:@"cloud"];
+    }
+    else if([currentIcon isEqualToString:@"partly-cloudy-day"]) {
+        return [UIImage imageNamed:@"partly_sunny"];
+    }
+    else if([currentIcon isEqualToString:@"partly-cloudy-night"]) {
+        return [UIImage imageNamed:@"partly_moon"];
+    }
+    else if([currentIcon isEqualToString:@"hail"]) {
+        return [UIImage imageNamed:@"hail"];
+    }
+    else if([currentIcon isEqualToString:@"thunderstorm"]) {
+        return [UIImage imageNamed:@"storm"];
+    }
+    else if([currentIcon isEqualToString:@"tornado"]) {
+        return [UIImage imageNamed:@"tornado"];
+    }
+    
+    return [UIImage imageNamed:@"partly_sunny"];
 }
 
 - (NSString *)getDayName:(int)index {
@@ -164,9 +256,6 @@
     NSDateComponents *weekdayComponents =[calendar components:NSWeekdayCalendarUnit fromDate:nextDate];
     
     int day = (int)[weekdayComponents weekday] % 7;
-//    if (day == 0) {
-//        day = 7; // handle Saturday weirdness
-//    }
     
     switch(day) {
         case 0:
@@ -185,6 +274,33 @@
             return @"Sat";
     }
     return @"";
+}
+
+- (void)animateCurrentConditions {
+    // Current icon
+    CGRect startFrameIcon = self.currentWeatherImage.frame;
+    CGRect endFrameIcon = CGRectMake(startFrameIcon.origin.x, startFrameIcon.origin.y + 300, startFrameIcon.size.width, startFrameIcon.size.height);
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView beginAnimations:nil context:nil];
+        [UIView setAnimationDuration:0.5];
+        [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+        self.currentWeatherImage.frame = endFrameIcon;
+        [UIView commitAnimations];
+    });
+    
+    // Current temp
+    CGRect startFrame = self.currentTemperatureLabel.frame;
+    CGRect endFrame = CGRectMake(startFrame.origin.x, startFrame.origin.y + 100, startFrame.size.width, startFrame.size.height);
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView beginAnimations:nil context:nil];
+        [UIView setAnimationDuration:0.5];
+        [UIView setAnimationDelay:0.2];
+        [UIView setAnimationCurve:UIViewAnimationCurveLinear];
+        self.currentTemperatureLabel.frame = endFrame;
+        [UIView commitAnimations];
+    });
 }
 
 @end
